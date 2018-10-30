@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 
 /*!
  *  @file	coreconfigurator.h
@@ -13,21 +14,9 @@
 
 #include "wilc_wlan_if.h"
 
-#define NUM_BASIC_SWITCHES      45
-#define NUM_FHSS_SWITCHES       0
-
 #define NUM_RSSI                5
 
-#ifdef MAC_802_11N
-#define NUM_11N_BASIC_SWITCHES  25
-#define NUM_11N_HUT_SWITCHES    47
-#else
-#define NUM_11N_BASIC_SWITCHES  0
-#define NUM_11N_HUT_SWITCHES    0
-#endif
-
 #define MAC_HDR_LEN             24
-#define MAX_SSID_LEN            33
 #define FCS_LEN                 4
 #define TIME_STAMP_LEN          8
 #define BEACON_INTERVAL_LEN     2
@@ -40,15 +29,51 @@
 #define GET_CFG              1
 
 #define MAX_STRING_LEN               256
-#define MAX_SURVEY_RESULT_FRAG_SIZE  MAX_STRING_LEN
-#define SURVEY_RESULT_LENGTH         44
 #define MAX_ASSOC_RESP_FRAME_SIZE    MAX_STRING_LEN
-
-#define MAC_CONNECTED                1
-#define MAC_DISCONNECTED             0
 
 #define MAKE_WORD16(lsb, msb) ((((u16)(msb) << 8) & 0xFF00) | (lsb))
 #define MAKE_WORD32(lsw, msw) ((((u32)(msw) << 16) & 0xFFFF0000) | (lsw))
+
+extern uint32_t cfg_packet_timeout;
+
+enum sub_frame_type {
+	ASSOC_REQ	      = 0x00,
+	ASSOC_RSP	      = 0x10,
+	REASSOC_REQ	      = 0x20,
+	REASSOC_RSP	      = 0x30,
+	PROBE_REQ	      = 0x40,
+	PROBE_RSP	      = 0x50,
+	BEACON		      = 0x80,
+	ATIM		      = 0x90,
+	DISASOC		      = 0xA0,
+	AUTH		      = 0xB0,
+	DEAUTH		      = 0xC0,
+	ACTION		      = 0xD0,
+	PS_POLL		      = 0xA4,
+	RTS		      = 0xB4,
+	CTS		      = 0xC4,
+	ACK		      = 0xD4,
+	CFEND		      = 0xE4,
+	CFEND_ACK	      = 0xF4,
+	DATA		      = 0x08,
+	DATA_ACK	      = 0x18,
+	DATA_POLL	      = 0x28,
+	DATA_POLL_ACK	      = 0x38,
+	NULL_FRAME	      = 0x48,
+	CFACK		      = 0x58,
+	CFPOLL		      = 0x68,
+	CFPOLL_ACK	      = 0x78,
+	QOS_DATA	      = 0x88,
+	QOS_DATA_ACK	      = 0x98,
+	QOS_DATA_POLL	      = 0xA8,
+	QOS_DATA_POLL_ACK     = 0xB8,
+	QOS_NULL_FRAME	      = 0xC8,
+	QOS_CFPOLL	      = 0xE8,
+	QOS_CFPOLL_ACK	      = 0xF8,
+	BLOCKACK_REQ	      = 0x84,
+	BLOCKACK	      = 0x94,
+	FRAME_SUBTYPE_FORCE_32BIT  = 0xFFFFFFFF
+};
 
 enum connect_status {
 	SUCCESSFUL_STATUSCODE    = 0,
@@ -120,7 +145,7 @@ struct disconnect_info {
 	size_t ie_len;
 };
 
-s32 wilc_parse_network_info(u8 *msg_buffer,
+s32 wilc_parse_network_info(struct wilc_vif *vif, u8 *msg_buffer,
 			    struct network_info **ret_network_info);
 s32 wilc_parse_assoc_resp_info(u8 *buffer, u32 buffer_len,
 			       struct connect_resp_info **ret_connect_resp_info);
