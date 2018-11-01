@@ -1,63 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2012 - 2018 Microchip Technology Inc., and its subsidiaries.
+ * All rights reserved.
+ */
+
+#include <linux/ieee80211.h>
+
 #include "coreconfigurator.h"
-#include "wilc_wlan_if.h"
-#include "wilc_wlan.h"
 #include "wilc_wfi_netdevice.h"
-#include <linux/errno.h>
-#include <linux/slab.h>
+
 #define TAG_PARAM_OFFSET	(MAC_HDR_LEN + TIME_STAMP_LEN + \
 				 BEACON_INTERVAL_LEN + CAP_INFO_LEN)
-
-enum basic_frame_type {
-	FRAME_TYPE_CONTROL     = 0x04,
-	FRAME_TYPE_DATA        = 0x08,
-	FRAME_TYPE_MANAGEMENT  = 0x00,
-	FRAME_TYPE_RESERVED    = 0x0C,
-	FRAME_TYPE_FORCE_32BIT = 0xFFFFFFFF
-};
-
-enum info_element_id {
-	ISSID               = 0,   /* Service Set Identifier         */
-	ISUPRATES           = 1,   /* Supported Rates                */
-	IFHPARMS            = 2,   /* FH parameter set               */
-	IDSPARMS            = 3,   /* DS parameter set               */
-	ICFPARMS            = 4,   /* CF parameter set               */
-	ITIM                = 5,   /* Traffic Information Map        */
-	IIBPARMS            = 6,   /* IBSS parameter set             */
-	ICOUNTRY            = 7,   /* Country element                */
-	IEDCAPARAMS         = 12,  /* EDCA parameter set             */
-	ITSPEC              = 13,  /* Traffic Specification          */
-	ITCLAS              = 14,  /* Traffic Classification         */
-	ISCHED              = 15,  /* Schedule                       */
-	ICTEXT              = 16,  /* Challenge Text                 */
-	IPOWERCONSTRAINT    = 32,  /* Power Constraint               */
-	IPOWERCAPABILITY    = 33,  /* Power Capability               */
-	ITPCREQUEST         = 34,  /* TPC Request                    */
-	ITPCREPORT          = 35,  /* TPC Report                     */
-	ISUPCHANNEL         = 36,  /* Supported channel list         */
-	ICHSWANNOUNC        = 37,  /* Channel Switch Announcement    */
-	IMEASUREMENTREQUEST = 38,  /* Measurement request            */
-	IMEASUREMENTREPORT  = 39,  /* Measurement report             */
-	IQUIET              = 40,  /* Quiet element Info             */
-	IIBSSDFS            = 41,  /* IBSS DFS                       */
-	IERPINFO            = 42,  /* ERP Information                */
-	ITSDELAY            = 43,  /* TS Delay                       */
-	ITCLASPROCESS       = 44,  /* TCLAS Processing               */
-	IHTCAP              = 45,  /* HT Capabilities                */
-	IQOSCAP             = 46,  /* QoS Capability                 */
-	IRSNELEMENT         = 48,  /* RSN Information Element        */
-	IEXSUPRATES         = 50,  /* Extended Supported Rates       */
-	IEXCHSWANNOUNC      = 60,  /* Extended Ch Switch Announcement*/
-	IHTOPERATION        = 61,  /* HT Information                 */
-	ISECCHOFF           = 62,  /* Secondary Channel Offeset      */
-	I2040COEX           = 72,  /* 20/40 Coexistence IE           */
-	I2040INTOLCHREPORT  = 73,  /* 20/40 Intolerant channel report*/
-	IOBSSSCAN           = 74,  /* OBSS Scan parameters           */
-	IEXTCAP             = 127, /* Extended capability            */
-	IWMM                = 221, /* WMM parameters                 */
-	IWPAELEMENT         = 221, /* WPA Information Element        */
-	INFOELEM_ID_FORCE_32BIT  = 0xFFFFFFFF
-};
 
 static inline u16 get_beacon_period(u8 *data)
 {
@@ -125,7 +78,7 @@ static inline void get_address3(u8 *msa, u8 *addr)
 	memcpy(addr, msa + 16, 6);
 }
 
-static inline void get_BSSID(u8 *data, u8 *bssid)
+static inline void get_bssid(u8 *data, u8 *bssid)
 {
 	if (get_from_ds(data) == 1)
 		get_address2(data, bssid);
@@ -137,9 +90,7 @@ static inline void get_BSSID(u8 *data, u8 *bssid)
 
 static inline void get_ssid(u8 *data, u8 *ssid, u8 *p_ssid_len)
 {
-	u8 len = 0;
-	u8 i   = 0;
-	u8 j   = 0;
+	u8 i, j, len;
 
 	len = data[TAG_PARAM_OFFSET + 1];
 	j   = TAG_PARAM_OFFSET + 2;
@@ -172,32 +123,12 @@ static inline u16 get_cap_info(u8 *data)
 	return cap_info;
 }
 
-static inline u16 get_assoc_resp_cap_info(u8 *data)
-{
-	u16 cap_info;
-
-	cap_info  = data[0];
-	cap_info |= (data[1] << 8);
-
-	return cap_info;
-}
-
 static inline u16 get_asoc_status(u8 *data)
 {
 	u16 asoc_status;
 
 	asoc_status = data[3];
 	return (asoc_status << 8) | data[2];
-}
-
-static inline u16 get_asoc_id(u8 *data)
-{
-	u16 asoc_id;
-
-	asoc_id  = data[4];
-	asoc_id |= (data[5] << 8);
-
-	return asoc_id;
 }
 
 static u8 *get_tim_elm(u8 *msa, u16 rx_len, u16 tag_param_offset)
@@ -207,7 +138,7 @@ static u8 *get_tim_elm(u8 *msa, u16 rx_len, u16 tag_param_offset)
 	index = tag_param_offset;
 
 	while (index < (rx_len - FCS_LEN)) {
-		if (msa[index] == ITIM)
+		if (msa[index] == WLAN_EID_TIM)
 			return &msa[index];
 		index += (IE_HDR_LEN + msa[index + 1]);
 	}
@@ -221,7 +152,7 @@ static u8 get_current_channel_802_11n(u8 *msa, u16 rx_len)
 
 	index = TAG_PARAM_OFFSET;
 	while (index < (rx_len - FCS_LEN)) {
-		if (msa[index] == IDSPARMS)
+		if (msa[index] == WLAN_EID_DS_PARAMS)
 			return msa[index + 2];
 		index += msa[index + 1] + IE_HDR_LEN;
 	}
@@ -232,18 +163,11 @@ static u8 get_current_channel_802_11n(u8 *msa, u16 rx_len)
 s32 wilc_parse_network_info(struct wilc_vif *vif, u8 *msg_buffer,
 			    struct network_info **ret_network_info)
 {
-	struct network_info *network_info = NULL;
-	u8 msg_type = 0;
-	u16 wid_len  = 0;
-	u8 *wid_val = NULL;
-	u8 *msa = NULL;
-	u16 rx_len = 0;
-	u8 *tim_elm = NULL;
-	u8 *ies = NULL;
-	u16 ies_len = 0;
-	u8 index = 0;
-	u32 tsf_lo;
-	u32 tsf_hi;
+	struct network_info *network_info;
+	u8 *wid_val, *msa, *tim_elm, *ies;
+	u32 tsf_lo, tsf_hi;
+	u16 wid_len, rx_len, ies_len;
+	u8 msg_type, index;
 
 	msg_type = msg_buffer[0];
 
@@ -264,7 +188,8 @@ s32 wilc_parse_network_info(struct wilc_vif *vif, u8 *msg_buffer,
 	rx_len = wid_len - 1;
 	network_info->cap_info = get_cap_info(msa);
 	network_info->tsf_lo = get_beacon_timestamp_lo(msa);
-	PRINT_INFO(vif->ndev, CORECONFIG_DBG,"TSF :%x\n",network_info->tsf_lo);
+	PRINT_INFO(vif->ndev, CORECONFIG_DBG, "TSF :%x\n",
+		   network_info->tsf_lo);
 
 	tsf_lo = get_beacon_timestamp_lo(msa);
 	tsf_hi = get_beacon_timestamp_hi(msa);
@@ -272,7 +197,7 @@ s32 wilc_parse_network_info(struct wilc_vif *vif, u8 *msg_buffer,
 	network_info->tsf_hi = tsf_lo | ((u64)tsf_hi << 32);
 
 	get_ssid(msa, network_info->ssid, &network_info->ssid_len);
-	get_BSSID(msa, network_info->bssid);
+	get_bssid(msa, network_info->bssid);
 
 	network_info->ch = get_current_channel_802_11n(msa, rx_len
 						       + FCS_LEN);
@@ -304,38 +229,23 @@ s32 wilc_parse_network_info(struct wilc_vif *vif, u8 *msg_buffer,
 }
 
 s32 wilc_parse_assoc_resp_info(u8 *buffer, u32 buffer_len,
-			       struct connect_resp_info **ret_connect_resp_info)
+			       struct connect_info *ret_conn_info)
 {
-	struct connect_resp_info *connect_resp_info = NULL;
-	u16 assoc_resp_len = 0;
-	u8 *ies = NULL;
-	u16 ies_len = 0;
+	u8 *ies;
+	u16 ies_len;
 
-	connect_resp_info = kzalloc(sizeof(*connect_resp_info), GFP_KERNEL);
-	if (!connect_resp_info)
-		return -ENOMEM;
-
-	assoc_resp_len = (u16)buffer_len;
-
-	connect_resp_info->status = get_asoc_status(buffer);
-	if (connect_resp_info->status == SUCCESSFUL_STATUSCODE) {
-		connect_resp_info->capability = get_assoc_resp_cap_info(buffer);
-		connect_resp_info->assoc_id = get_asoc_id(buffer);
-
+	ret_conn_info->status = get_asoc_status(buffer);
+	if (ret_conn_info->status == WLAN_STATUS_SUCCESS) {
 		ies = &buffer[CAP_INFO_LEN + STATUS_CODE_LEN + AID_LEN];
-		ies_len = assoc_resp_len - (CAP_INFO_LEN + STATUS_CODE_LEN +
-					    AID_LEN);
+		ies_len = buffer_len - (CAP_INFO_LEN + STATUS_CODE_LEN +
+					AID_LEN);
 
-		connect_resp_info->ies = kmemdup(ies, ies_len, GFP_KERNEL);
-		if (!connect_resp_info->ies) {
-			kfree(connect_resp_info);
+		ret_conn_info->resp_ies = kmemdup(ies, ies_len, GFP_KERNEL);
+		if (!ret_conn_info->resp_ies)
 			return -ENOMEM;
-		}
 
-		connect_resp_info->ies_len = ies_len;
+		ret_conn_info->resp_ies_len = ies_len;
 	}
-
-	*ret_connect_resp_info = connect_resp_info;
 
 	return 0;
 }

@@ -1,12 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-
-/*!
- *  @file	coreconfigurator.h
- *  @brief
- *  @author
- *  @sa		coreconfigurator.c
- *  @date	1 Mar 2012
- *  @version	1.0
+/*
+ * Copyright (c) 2012 - 2018 Microchip Technology Inc., and its subsidiaries.
+ * All rights reserved.
  */
 
 #ifndef CORECONFIGURATOR_H
@@ -75,26 +70,6 @@ enum sub_frame_type {
 	FRAME_SUBTYPE_FORCE_32BIT  = 0xFFFFFFFF
 };
 
-enum connect_status {
-	SUCCESSFUL_STATUSCODE    = 0,
-	UNSPEC_FAIL              = 1,
-	UNSUP_CAP                = 10,
-	REASOC_NO_ASOC           = 11,
-	FAIL_OTHER               = 12,
-	UNSUPT_ALG               = 13,
-	AUTH_SEQ_FAIL            = 14,
-	CHLNG_FAIL               = 15,
-	AUTH_TIMEOUT             = 16,
-	AP_FULL                  = 17,
-	UNSUP_RATE               = 18,
-	SHORT_PREAMBLE_UNSUP     = 19,
-	PBCC_UNSUP               = 20,
-	CHANNEL_AGIL_UNSUP       = 21,
-	SHORT_SLOT_UNSUP         = 25,
-	OFDM_DSSS_UNSUP          = 26,
-	CONNECT_STS_FORCE_16_BIT = 0xFFFF
-};
-
 struct rssi_history_buffer {
 	bool full;
 	u8 index;
@@ -122,14 +97,6 @@ struct network_info {
 	u64 tsf_hi;
 };
 
-struct connect_resp_info {
-	u16 capability;
-	u16 status;
-	u16 assoc_id;
-	u8 *ies;
-	u16 ies_len;
-};
-
 struct connect_info {
 	u8 bssid[6];
 	u8 *req_ies;
@@ -148,7 +115,7 @@ struct disconnect_info {
 s32 wilc_parse_network_info(struct wilc_vif *vif, u8 *msg_buffer,
 			    struct network_info **ret_network_info);
 s32 wilc_parse_assoc_resp_info(u8 *buffer, u32 buffer_len,
-			       struct connect_resp_info **ret_connect_resp_info);
+			       struct connect_info *ret_conn_info);
 void wilc_scan_complete_received(struct wilc *wilc, u8 *buffer, u32 length);
 void wilc_network_info_received(struct wilc *wilc, u8 *buffer, u32 length);
 void wilc_gnrl_async_info_received(struct wilc *wilc, u8 *buffer, u32 length);
